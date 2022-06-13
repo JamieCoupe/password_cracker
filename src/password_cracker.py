@@ -10,21 +10,17 @@ wordlist_path = args.wordlist
 shadow_path = args.shadow
 
 
-def get_wordlist():
+def get_wordlist(salts):
     print('Hashing wordlist')
 
     with open(wordlist_path, encoding="utf8") as wordlist_file:
-        wordlist = wordlist_file.readlines()
+        wordlist = wordlist_file.read().splitlines()
 
     print(f'There are {len(wordlist)} entries, this may take a few minutes')
-
-    hash = list()
+    hash = dict()
     for word in wordlist:
-        wordpair = {
-        "encrypted" : md5_crypt.hash(word),
-        "decrpyted" : word
-        }
-        hash.append(wordpair)
+        for salt in salts:
+            hash[md5_crypt.hash(word, salt=salt)] = word
 
     print('Wordlist successfully hashed')
     return hash
@@ -34,20 +30,23 @@ def get_shadow_file():
     print("Getting shadow file")
 
     with open(shadow_path, encoding="utf8") as shadow_file:
-        data = shadow_file.readlines()
+        data = shadow_file.read().splitlines()
 
     users = list()
+    salts = list()
 
     for user in data:
         user_string = user.split(':')
         username = user_string[0].strip()
         password = user_string[1].strip()
         user_dict = {'username' : username,
-                     'password' : password}
-
+                     'password' : password,
+                    }
+        salts.append(password.split('$')[2])
         users.append(user_dict)
-    print(f'Found {len(user_dict)} users')
-    return users
+    print(f'Found {len(users)} users')
+    print(f'Loaded {len(salts)} unique salts')
+    return users, salts
 
 
 def compare_hash(users, hashed_wordlist):
@@ -55,9 +54,8 @@ def compare_hash(users, hashed_wordlist):
     cracked_passwords = list()
     for user in users:
         print(f'User {user["username"]}')
-        print(hashed_wordlist)
-        if user["password"] in hashed_wordlist:
-            print(f'Password cracked as {user["password"]}')
+        if user["password"] in hashed_wordlist.keys():
+            print(f'Password cracked as {hashed_wordlist[user["password"]]}')
             successful_result = {
                 "username" : user["username"],
                 "encrypted_pass" : user["password"],
@@ -68,6 +66,7 @@ def compare_hash(users, hashed_wordlist):
 
 
 if __name__ == '__main__':
-    wordlist = get_wordlist()
-    users = get_shadow_file()
-    compare_hash(users, wordlist)
+    users, salts = get_shadow_file()
+    wordlists = get_wordlist(salts)
+    #print(wordlists)
+    compare_hash(users, wordlists)
