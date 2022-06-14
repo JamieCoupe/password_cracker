@@ -68,5 +68,4 @@ def compare_hash(users, hashed_wordlist):
 if __name__ == '__main__':
     users, salts = get_shadow_file()
     wordlists = get_wordlist(salts)
-    #print(wordlists)
     compare_hash(users, wordlists)
